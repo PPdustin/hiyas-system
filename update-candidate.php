@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // The new data we want to update
     $updatedData = [
         "name" => $_POST['name'],
+        "prepageant" => $_POST['prepageant'],
         "number" => $_POST['number']
     ];
 

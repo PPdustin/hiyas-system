@@ -336,6 +336,7 @@
                             <tr>
                                 <th>Number</th>
                                 <th>Name</th>
+                                <th>Pre-Pageant</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -387,6 +388,11 @@
                 <div class="form-group">
                     <label for="candidate-name">Candidate Name</label>
                     <input type="text" id="candidate-name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="candidate-prepageant">Pre-pageant Score</label>
+                    <input type="number" id="candidate-prepageant" required>
                 </div>
                 
                 <div class="text-right">
@@ -513,16 +519,18 @@
             const id = document.getElementById('candidate-id').value;
             const number = document.getElementById('candidate-number').value;
             const name = document.getElementById('candidate-name').value;
+            const prepageant = document.getElementById('candidate-prepageant').value
             
             if (id) {
                 // Update existing candidate
                 const index = candidates.findIndex(c => c.id == id);
-                candidates[index] = { id: parseInt(id), number, name };
+                candidates[index] = { id: parseInt(id), number, name, prepageant };
 
                 const formData = new FormData();
                 formData.append('id', id);
                 formData.append('name', name);
                 formData.append('number', number);
+                formData.append('prepageant', prepageant);
 
                 fetch('update-candidate.php', {
                     method: 'POST',
@@ -538,12 +546,13 @@
             } else {
                 // Add new candidate
                 const newId = candidates.length > 0 ? Math.max(...candidates.map(c => c.id)) + 1 : 1;
-                candidates.push({ id: newId, number, name });
+                candidates.push({ id: newId, number, name, prepageant });
 
                 const formData = new FormData();
                 formData.append('id', newId);
                 formData.append('name', name);
                 formData.append('number', number);
+                formData.append('prepageant', prepageant);
 
                 fetch('save-candidate.php', {
                     method: 'POST',
@@ -642,6 +651,7 @@
                 row.innerHTML = `
                     <td>${candidate.number}</td>
                     <td>${candidate.name}</td>
+                    <td>${candidate.prepageant}</td>
                     <td class="action-btns">
                         <button class="btn btn-primary edit-candidate" data-id="${candidate.id}">Edit</button>
                         <button class="btn btn-danger delete-candidate" data-id="${candidate.id}">Delete</button>
@@ -685,6 +695,7 @@
                     document.getElementById('candidate-id').value = candidate.id;
                     document.getElementById('candidate-number').value = candidate.number;
                     document.getElementById('candidate-name').value = candidate.name;
+                    document.getElementById('candidate-prepageant').value = candidate.prepageant;
                     
                     candidateModal.style.display = 'block';
                 });

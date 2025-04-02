@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $newEntry = [
         'id' => $_POST['id'],
         'name' => $_POST['name'],
+        'prepageant' => $_POST['prepageant'],
         'number' => $_POST['number']
     ];
 

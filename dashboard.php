@@ -248,46 +248,46 @@
         
         <div class="category-list">
             <!-- Production Number/Creative Cultural Attire -->
-            <div class="category-card" onclick="navigateToCategory('production')">
+            <div class="category-card" onclick="navigateToCategory('cultural')">
                 <div class="category-header">
-                    <span>Production Number</span>
+                    <span>Cultural Attire</span>
                     <span class="category-weight">10%</span>
                 </div>
                 <!-- <div class="status-badge not-started">Not Started</div> -->
                 <div class="category-body">
                     <div class="category-description">
-                        Creative Cultural Attire presentation showcasing the cultural heritage of the candidates.
+                    Contestants celebrate cultural heritage through expressive and meaningful traditional attire with strong visual and cultural appeal.
                     </div>
                     <div class="progress-container">
                         <div class="progress-info">
                             <span>Completion</span>
-                            <span id="production-progress">0%</span>
+                            <span id="cultural-progress">0%</span>
                         </div>
                         <div class="progress-bar">
-                            <div class="progress-value" id="production-bar" style="width: 0%"></div>
+                            <div class="progress-value" id="cultural-bar" style="width: 0%"></div>
                         </div>
                     </div>
                 </div>
             </div>
             
             <!-- Uniform Attire -->
-            <div class="category-card" onclick="navigateToCategory('uniform')">
+            <div class="category-card" onclick="navigateToCategory('sports')">
                 <div class="category-header">
-                    <span>Uniform Attire</span>
+                    <span>Sports Attire</span>
                     <span class="category-weight">10%</span>
                 </div>
                 <!-- <div class="status-badge pending">In Progress</div> -->
                 <div class="category-body">
                     <div class="category-description">
-                        Assessment of candidates in their official uniform presentation.
+                    Contestants present a confident and stylish look in sportswear, emphasizing uniqueness, appropriateness, and stage presence.
                     </div>
                     <div class="progress-container">
                         <div class="progress-info">
                             <span>Completion</span>
-                            <span id="uniform-progress">40%</span>
+                            <span id="sports-progress">0%</span>
                         </div>
                         <div class="progress-bar">
-                            <div class="progress-value" id="uniform-bar" style="width: 40%"></div>
+                            <div class="progress-value" id="sports-bar" style="width: 0%"></div>
                         </div>
                     </div>
                 </div>
@@ -296,13 +296,13 @@
             <!-- Advocacy Campaign Speech/Video -->
             <div class="category-card" onclick="navigateToCategory('advocacy')">
                 <div class="category-header">
-                    <span>Advocacy Campaign</span>
+                    <span>Advocacy Campaign Speech/Video</span>
                     <span class="category-weight">15%</span>
                 </div>
                 <!-- <div class="status-badge not-started">Not Started</div> -->
                 <div class="category-body">
                     <div class="category-description">
-                        Speech and video presentation of candidates' social advocacy campaigns.
+                    Contestants deliver a compelling speech highlighting their cause, structured effectively with clear articulation and strong relevance.
                     </div>
                     <div class="progress-container">
                         <div class="progress-info">
@@ -319,13 +319,13 @@
             <!-- Casual Attire -->
             <div class="category-card" onclick="navigateToCategory('casual')">
                 <div class="category-header">
-                    <span>Casual Attire</span>
+                    <span>Casual Attire/Production Number</span>
                     <span class="category-weight">15%</span>
                 </div>
                 <!-- <div class="status-badge not-started">Not Started</div> -->
                 <div class="category-body">
                     <div class="category-description">
-                        Assessment of candidates' style, confidence, and presentation in casual wear.
+                    Contestants showcase their stage presence, grace, and creativity through an energetic and well-executed performance.
                     </div>
                     <div class="progress-container">
                         <div class="progress-info">
@@ -342,13 +342,13 @@
             <!-- Evening Gown and Formal Wear -->
             <div class="category-card" onclick="navigateToCategory('evening')">
                 <div class="category-header">
-                    <span>Evening Gown/Formal</span>
+                    <span>Evening Gown and Formal Wear</span>
                     <span class="category-weight">20%</span>
                 </div>
                 <!-- <div class="status-badge not-started">Not Started</div> -->
                 <div class="category-body">
                     <div class="category-description">
-                        Evaluation of elegance, style, and stage presence in formal evening wear.
+                    Contestants display elegance, confidence, and poise in formal wear, highlighting their sophistication and presence.
                     </div>
                     <div class="progress-container">
                         <div class="progress-info">
@@ -365,21 +365,21 @@
             <!-- Final Q&A -->
             <div class="category-card" onclick="navigateToCategory('qa')">
                 <div class="category-header">
-                    <span>Final Q&A</span>
+                    <span>Final Q and A</span>
                     <span class="category-weight">30%</span>
                 </div>
                 <!-- <div class="status-badge completed">Completed</div> -->
                 <div class="category-body">
                     <div class="category-description">
-                        Assessment of candidates' intelligence, wit, and ability to answer questions under pressure.
+                    Contestants respond to thought-provoking questions with clarity, fluency, and confidence, demonstrating intelligence and composure under pressure.
                     </div>
                     <div class="progress-container">
                         <div class="progress-info">
                             <span>Completion</span>
-                            <span id="qa-progress">100%</span>
+                            <span id="qa-progress">0%</span>
                         </div>
                         <div class="progress-bar">
-                            <div class="progress-value" id="qa-bar" style="width: 100%"></div>
+                            <div class="progress-value" id="qa-bar" style="width: 0%"></div>
                         </div>
                     </div>
                 </div>
@@ -414,18 +414,23 @@
             
             // Default scoring structure
             $scoringData = [
-                "production" => ["completed" => 0, "total" => $totalCandidates],
-                "uniform" => ["completed" => 0, "total" => $totalCandidates],
-                "advocacy" => ["completed" => 0, "total" => $totalCandidates],
-                "casual" => ["completed" => 0, "total" => $totalCandidates],
-                "evening" => ["completed" => 0, "total" => $totalCandidates],
-                "qa" => ["completed" => 0, "total" => $totalCandidates]
+                "cultural" => ["completed" => 0, "total" => $totalCandidates * 4],
+                "sports" => ["completed" => 0, "total" => $totalCandidates * 4],
+                "advocacy" => ["completed" => 0, "total" => $totalCandidates * 4],
+                "casual" => ["completed" => 0, "total" => $totalCandidates * 4],
+                "evening" => ["completed" => 0, "total" => $totalCandidates * 4],
+                "qa" => ["completed" => 0, "total" => $totalCandidates * 4]
             ];
             
             // Compute completed scores
             foreach ($judgeData as $category => $scores) {
                 if (isset($scoringData[$category])) {
-                    $scoringData[$category]["completed"] = count($scores);
+                    //$scoringData[$category]["completed"] = count($scores);
+                    $totalCatScores = 0;
+                    foreach ($scores as $candidate => $criteria){
+                        $totalCatScores += count($criteria);
+                    }
+                    $scoringData[$category]["completed"] = $totalCatScores;
                 }
             }
             
