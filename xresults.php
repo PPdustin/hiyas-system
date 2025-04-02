@@ -2,11 +2,21 @@
 // Define paths to JSON files
 $candidatesFile = './src/candidates.json';
 $judgesFile = './src/judges.json';
-$judgesScoresDir = './src/judges-scores/';
+$judgesScoresPath = './src/judges-scores/';
 
 // Load candidates and judges data
 $candidates = json_decode(file_get_contents($candidatesFile), true);
 $judges = json_decode(file_get_contents($judgesFile), true);
+
+// Define category weights for pageant night (70% of grand total)
+$categoryWeights = [
+    'cultural' => 10,
+    'sports' => 10,
+    'advocacy' => 15,
+    'casual' => 15,
+    'evening' => 20,
+    'qa' => 30
+];
 
 // Define criteria mapping with weights
 $criteriaMapping = [
@@ -50,123 +60,111 @@ $criteriaMapping = [
 
 // Category display names
 $categoryNames = [
-    "cultural" => "Cultural Attire",
-    "sports" => "Sports Wear",
-    "advocacy" => "Advocacy",
-    "casual" => "Casual Wear",
-    "evening" => "Evening Gown",
-    "qa" => "Question and Answer"
+    'cultural' => 'Cultural Attire',
+    'sports' => 'Sports Attire',
+    'advocacy' => 'Advocacy Campaign Speech/Video',
+    'casual' => 'Casual Attire/Production Number',
+    'evening' => 'Evening Gown and Formal Wear',
+    'qa' => 'Final Q and A'
 ];
 
 // Load all judges' scores
 $judgesScores = [];
 foreach ($judges as $judge) {
-    $scoreFile = $judgesScoresDir . $judge['name'] . '.json';
-    if (file_exists($scoreFile)) {
-        $judgesScores[$judge['name']] = json_decode(file_get_contents($scoreFile), true);
+    $judgeScoreFile = $judgesScoresPath . $judge['name'] . '.json';
+    if (file_exists($judgeScoreFile)) {
+        $judgesScores[$judge['id']] = json_decode(file_get_contents($judgeScoreFile), true);
     }
 }
 
-// Calculate weighted scores and totals
+// Function to calculate weighted score for a criterion
 function calculateWeightedScore($score, $weight) {
     return ($score * $weight) / 100;
 }
 
-// Function to calculate candidate's score for a specific category
-function calculateCategoryScore($candidateId, $category, $judgeScores, $criteriaMapping) {
-    $totalWeightedScore = 0;
+// Function to calculate overall score for a category
+function calculateCategoryScore($candidateScores, $criteria) {
+    $totalScore = 0;
+    $totalWeight = 0;
     
-    if (isset($judgeScores[$category][$candidateId])) {
-        foreach ($criteriaMapping[$category] as $criteria) {
-            $criteriaId = $criteria['id'];
-            $weight = $criteria['weight'];
-            
-            if (isset($judgeScores[$category][$candidateId][$criteriaId])) {
-                $score = $judgeScores[$category][$candidateId][$criteriaId];
-                $totalWeightedScore += calculateWeightedScore($score, $weight);
-            }
+    foreach ($criteria as $criterion) {
+        if (isset($candidateScores[$criterion['id']])) {
+            $totalScore += $candidateScores[$criterion['id']];
+            $totalWeight += $criterion['weight'];
         }
     }
     
-    return $totalWeightedScore;
+    // Normalize if weights don't add up to 100
+    if ($totalWeight > 0 && $totalWeight != 100) {
+        $totalScore = ($totalScore * 100) / $totalWeight;
+    }
+    
+    return $totalScore;
 }
 
-// Calculate overall scores
+// Function to calculate average score across all judges for a candidate in a category
+function calculateAverageScore($candidateId, $category, $judgesScores, $criteria) {
+    $totalScore = 0;
+    $judgeCount = 0;
+    
+    foreach ($judgesScores as $judgeId => $judgeScores) {
+        if (isset($judgeScores[$category][$candidateId])) {
+            $totalScore += calculateCategoryScore($judgeScores[$category][$candidateId], $criteria);
+            $judgeCount++;
+        }
+    }
+    
+    return $judgeCount > 0 ? $totalScore / $judgeCount : 0;
+}
+
+// Compile all scores
+$compiledScores = [];
+$categoryAverages = [];
 $overallScores = [];
+
 foreach ($candidates as $candidate) {
-    $candidateId = $candidate['number']; // Using number as ID
-    $overallScores[$candidateId] = [
-        'name' => $candidate['name'],
-        'number' => $candidate['number'],
-        'prepageant' => isset($candidate['prepageant']) ? (float)$candidate['prepageant'] : 0,
-        'categories' => [],
-        'judges' => [],
-        'total' => 0
-    ];
+    $candidateId = $candidate['id'];
+    $compiledScores[$candidateId] = [];
+    $categoryAverages[$candidateId] = [];
+    $overallTotal = 0;
     
-    // Pre-pageant score
-    $overallScores[$candidateId]['total'] += $overallScores[$candidateId]['prepageant'];
-    
-    // Calculate scores per judge and category
-    foreach ($judges as $judge) {
-        $judgeName = $judge['name'];
-        $overallScores[$candidateId]['judges'][$judgeName] = ['categories' => [], 'total' => 0];
+    foreach ($categoryWeights as $category => $weight) {
+        $categoryAverages[$candidateId][$category] = calculateAverageScore(
+            $candidateId, 
+            $category, 
+            $judgesScores, 
+            $criteriaMapping[$category]
+        );
         
-        if (isset($judgesScores[$judgeName])) {
-            foreach ($criteriaMapping as $categoryId => $criteria) {
-                $categoryScore = calculateCategoryScore($candidateId, $categoryId, $judgesScores[$judgeName], $criteriaMapping);
-                $overallScores[$candidateId]['judges'][$judgeName]['categories'][$categoryId] = $categoryScore;
-                $overallScores[$candidateId]['judges'][$judgeName]['total'] += $categoryScore;
-            }
-        }
+        // Calculate weighted category score for overall total
+        $weightedCategoryScore = ($categoryAverages[$candidateId][$category] * $weight) / 100;
+        $overallTotal += $weightedCategoryScore;
     }
     
-    // Calculate average scores per category across all judges
-    foreach ($criteriaMapping as $categoryId => $criteria) {
-        $categoryTotal = 0;
-        $judgeCount = 0;
-        
-        foreach ($judges as $judge) {
-            $judgeName = $judge['name'];
-            if (isset($overallScores[$candidateId]['judges'][$judgeName]['categories'][$categoryId])) {
-                $categoryTotal += $overallScores[$candidateId]['judges'][$judgeName]['categories'][$categoryId];
-                $judgeCount++;
-            }
-        }
-        
-        $categoryAverage = $judgeCount > 0 ? $categoryTotal / $judgeCount : 0;
-        $overallScores[$candidateId]['categories'][$categoryId] = $categoryAverage;
-        $overallScores[$candidateId]['total'] += $categoryAverage;
-    }
+    // Store overall pageant night score (70% of grand total)
+    $overallScores[$candidateId] = $overallTotal;
 }
 
-// Sort candidates by total score (descending)
-usort($overallScores, function($a, $b) {
-    return $b['total'] <=> $a['total'];
-});
+// Calculate grand total scores (prepageant 30% + pageant night 70%)
+$grandTotalScores = [];
+foreach ($candidates as $candidate) {
+    $candidateId = $candidate['id'];
+    $prepageantScore = isset($candidate['prepageant']) ? (float)$candidate['prepageant'] : 0; // 30% weight
+    $pageantNightScore = $overallScores[$candidateId] * 0.7; // 70% weight
+    $grandTotalScores[$candidateId] = $prepageantScore + $pageantNightScore;
+}
 
-// Function to get detailed score breakdown
-function getDetailedScores($candidateId, $category, $judgeName, $judgesScores, $criteriaMapping) {
-    $details = [];
-    
-    if (isset($judgesScores[$judgeName][$category][$candidateId])) {
-        foreach ($criteriaMapping[$category] as $criteria) {
-            $criteriaId = $criteria['id'];
-            $weight = $criteria['weight'];
-            
-            if (isset($judgesScores[$judgeName][$category][$candidateId][$criteriaId])) {
-                $rawScore = $judgesScores[$judgeName][$category][$candidateId][$criteriaId];
-                $weightedScore = calculateWeightedScore($rawScore, $weight);
-                
-                $details[$criteriaId] = [
-                    'raw' => $rawScore,
-                    'weighted' => $weightedScore
-                ];
-            }
-        }
+// Sort candidates by grand total scores (descending)
+arsort($grandTotalScores);
+
+// Function to get formatted ordinal number
+function getOrdinal($number) {
+    $suffixes = ['th', 'st', 'nd', 'rd', 'th', 'th', 'th', 'th', 'th', 'th'];
+    if ((($number % 100) >= 11) && (($number % 100) <= 13)) {
+        return $number . 'th';
+    } else {
+        return $number . $suffixes[$number % 10];
     }
-    
-    return $details;
 }
 ?>
 
@@ -175,15 +173,14 @@ function getDetailedScores($candidateId, $category, $judgeName, $judgesScores, $
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pageant Scoring Results</title>
+    <title>Hiyas Scoring Results</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter&family=Montserrat:wght@400;600&family=Poppins:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-        /* Base styles according to style guide */
         :root {
             --primary-bg: #f8f9fa;
             --secondary-bg: #ffffff;
@@ -192,212 +189,139 @@ function getDetailedScores($candidateId, $category, $judgeName, $judgesScores, $
             --accent-color: #007bff;
             --success-color: #28a745;
             --border-color: #dee2e6;
+            --header-bg: #e9ecef;
+            --winner-bg: rgba(40, 167, 69, 0.1);
+            --winner-border: rgba(40, 167, 69, 0.3);
         }
         
+        /* Base Styles */
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             color: var(--primary-text);
             background-color: var(--primary-bg);
             margin: 0;
-            padding: 20px;
+            padding: 0;
             line-height: 1.5;
-        }
-        
-        h1, h2, h3, h4, h5, h6 {
-            font-family: 'Poppins', sans-serif;
-            font-weight: 700;
-            margin-top: 0;
-        }
-        
-        .btn, button, label {
-            font-family: 'Montserrat', sans-serif;
+            font-size: 12px;
         }
         
         .container {
+            width: 100%;
             max-width: 1200px;
             margin: 0 auto;
-        }
-        
-        .card {
-            background-color: var(--secondary-bg);
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             padding: 20px;
-            margin-bottom: 20px;
+            box-sizing: border-box;
+            background-color: var(--secondary-bg);
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            border-radius: 0.25rem;
         }
         
-        .table-container {
-            overflow-x: auto;
-            margin-bottom: 30px;
+        /* Typography */
+        h1, h2, h3 {
+            color: var(--primary-text);
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            page-break-after: avoid;
         }
         
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--accent-color);
+        }
+        
+        h2 {
+            font-size: 18px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+        }
+        
+        /* Table Styles */
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 14px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 2em;
+            page-break-inside: avoid;
+            background-color: var(--secondary-bg);
         }
         
         th, td {
             border: 1px solid var(--border-color);
-            padding: 8px;
+            padding: 6px;
             text-align: center;
+            vertical-align: middle;
         }
         
         th {
+            background-color: var(--header-bg);
+            font-weight: 600;
+            color: var(--primary-text);
+        }
+        
+        /* Specific Table Styles */
+        .detail-table th {
+            font-size: 11px;
+        }
+        
+        .summary-table {
+            max-width: 900px;
+            margin: 1.5em auto;
+        }
+        
+        .summary-table th {
+            text-align: center;
+        }
+        
+        .grand-total-table {
+            max-width: 800px;
+            margin: 1.5em auto;
+        }
+        
+        /* Cell Styles */
+        .candidate-name {
+            text-align: left;
+            font-weight: 600;
+            background-color: rgba(233, 236, 239, 0.5);
+        }
+        
+        .weight-label {
+            font-size: 11px;
+            color: var(--secondary-text);
+            font-weight: normal;
+        }
+        
+        .total-score {
+            font-weight: 600;
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+        
+        .winner-row {
+            background-color: var(--winner-bg);
+            border: 1px solid var(--winner-border);
+            font-weight: 600;
+        }
+        
+        /* Print Button */
+        .print-btn {
             background-color: var(--accent-color);
             color: white;
-            font-weight: 600;
-        }
-        
-        tr:nth-child(even) {
-            background-color: rgba(0,0,0,0.02);
-        }
-        
-        .top-score {
-            background-color: rgba(40, 167, 69, 0.1);
-            font-weight: bold;
-        }
-        
-        .candidate-name {
-            font-weight: bold;
-        }
-        
-        /* Print styles */
-        @media print {
-            body {
-                font-size: 12px;
-                background-color: white;
-                padding: 0;
-                margin: 0;
-            }
-            
-            .card {
-                box-shadow: none;
-                margin-bottom: 10px;
-                padding: 10px;
-            }
-            
-            .no-print {
-                display: none;
-            }
-            
-            table {
-                font-size: 10px;
-                page-break-inside: avoid;
-                box-shadow: none;
-            }
-            
-            th {
-                background-color: #f1f1f1 !important;
-                color: black !important;
-            }
-            
-            /* Force a page break between major sections */
-            .page-break {
-                page-break-after: always;
-            }
-            
-            /* Minimize margins */
-            @page {
-                margin: 1cm;
-            }
-        }
-        
-        /* Buttons */
-        .btn {
-            display: inline-block;
-            font-weight: 600;
-            text-align: center;
-            vertical-align: middle;
-            user-select: none;
-            border: 1px solid transparent;
-            padding: 0.5rem 1rem;
-            font-size: 14px;
-            line-height: 1.5;
+            border: none;
+            padding: 8px 16px;
             border-radius: 4px;
             cursor: pointer;
-            text-decoration: none;
-            transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out;
-        }
-        
-        .btn-primary {
-            color: #fff;
-            background-color: var(--accent-color);
-            border-color: var(--accent-color);
-        }
-        
-        .btn-primary:hover {
-            background-color: #0069d9;
-            border-color: #0062cc;
-        }
-        
-        /* Navigation tabs */
-        .tabs {
-            display: flex;
-            flex-wrap: wrap;
-            margin-bottom: 15px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        .tab {
-            padding: 8px 16px;
-            cursor: pointer;
-            border: 1px solid transparent;
-            border-top-left-radius: 4px;
-            border-top-right-radius: 4px;
-            margin-right: 5px;
-            margin-bottom: -1px;
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 600;
-        }
-        
-        .tab.active {
-            border-color: var(--border-color);
-            border-bottom-color: var(--secondary-bg);
-            background-color: var(--secondary-bg);
-            color: var(--accent-color);
-        }
-        
-        .tab:hover:not(.active) {
-            background-color: rgba(0,0,0,0.02);
-        }
-        
-        .tab-content {
-            display: none;
-        }
-        
-        .tab-content.active {
+            font-size: 14px;
+            font-weight: 500;
             display: block;
+            margin: 20px auto;
+            transition: background-color 0.15s ease-in-out;
         }
         
-        /* Rankings */
-        .rank {
-            display: inline-block;
-            width: 24px;
-            height: 24px;
-            line-height: 24px;
-            border-radius: 50%;
-            background-color: var(--accent-color);
-            color: white;
-            text-align: center;
-            font-weight: bold;
-            margin-right: 8px;
-        }
-        
-        .rank-1 {
-            background-color: gold;
-            color: black;
-        }
-        
-        .rank-2 {
-            background-color: silver;
-            color: black;
-        }
-        
-        .rank-3 {
-            background-color: #cd7f32; /* bronze */
-            color: white;
+        .print-btn:hover {
+            background-color: #0069d9;
         }
         
         /* Utilities */
@@ -405,277 +329,231 @@ function getDetailedScores($candidateId, $category, $judgeName, $judgesScores, $
             text-align: center;
         }
         
-        .mb-0 {
-            margin-bottom: 0;
+        .page-break {
+            page-break-before: always;
         }
         
-        .mt-4 {
-            margin-top: 20px;
+        /* Section Headers */
+        .section-header {
+            background-color: var(--accent-color);
+            color: white;
+            padding: 8px;
+            margin: 1em 0 0.5em;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 16px;
         }
         
-        .float-right {
-            float: right;
+        /* Print Styles */
+        @media print {
+            body {
+                background-color: white;
+                font-size: 11px;
+            }
+            
+            .container {
+                width: 100%;
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+                box-shadow: none;
+                border-radius: 0;
+            }
+            
+            h1 {
+                font-size: 18px;
+                margin-top: 0;
+            }
+            
+            h2 {
+                font-size: 14px;
+                margin-top: 1em;
+            }
+            
+            .section-header {
+                font-size: 14px;
+                background-color: var(--header-bg);
+                color: var(--primary-text);
+                border: 1px solid var(--border-color);
+            }
+            
+            .print-btn {
+                display: none;
+            }
+            
+            table {
+                page-break-inside: avoid;
+                font-size: 10px;
+            }
+            
+            .page-break {
+                page-break-before: always;
+            }
+            
+            @page {
+                margin: 1cm;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="card">
-            <h1 class="text-center">Pageant Scoring Results</h1>
-            <p class="text-center">
-                Total Candidates: <?= count($candidates) ?> | 
-                Total Judges: <?= count($judges) ?>
-            </p>
-            
-            <div class="no-print">
-                <button class="btn btn-primary" onclick="window.print()">Print Results</button>
-                
-                <div class="tabs mt-4">
-                    <div class="tab active" onclick="showTab('overall')">Overall Results</div>
-                    <?php foreach ($categoryNames as $id => $name): ?>
-                    <div class="tab" onclick="showTab('<?= $id ?>')"><?= $name ?></div>
-                    <?php endforeach; ?>
-                    <div class="tab" onclick="showTab('detailed')">Detailed Breakdown</div>
-                </div>
-            </div>
-            
-            <!-- Overall Results Tab -->
-            <div id="overall" class="tab-content active">
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th rowspan="2">Rank</th>
-                                <th rowspan="2">No.</th>
-                                <th rowspan="2">Candidate</th>
-                                <th rowspan="2">Pre-pageant</th>
-                                <?php foreach ($categoryNames as $id => $name): ?>
-                                <th><?= $name ?></th>
-                                <?php endforeach; ?>
-                                <th rowspan="2">Total</th>
-                            </tr>
-                            <tr>
-                                <?php foreach ($categoryNames as $id => $name): ?>
-                                <th>Score</th>
-                                <?php endforeach; ?>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($overallScores as $index => $candidate): ?>
-                            <tr>
-                                <td>
-                                    <span class="rank <?= $index < 3 ? 'rank-'.($index+1) : '' ?>">
-                                        <?= $index + 1 ?>
-                                    </span>
-                                </td>
-                                <td><?= $candidate['number'] ?></td>
-                                <td class="candidate-name"><?= $candidate['name'] ?></td>
-                                <td><?= number_format($candidate['prepageant'], 2) ?></td>
-                                <?php foreach ($criteriaMapping as $categoryId => $criteria): ?>
-                                <td><?= isset($candidate['categories'][$categoryId]) ? number_format($candidate['categories'][$categoryId], 2) : '-' ?></td>
-                                <?php endforeach; ?>
-                                <td class="top-score"><?= number_format($candidate['total'], 2) ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <!-- Category Tabs -->
-            <?php foreach ($categoryNames as $categoryId => $categoryName): ?>
-            <div id="<?= $categoryId ?>" class="tab-content">
-                <h2><?= $categoryName ?> Results</h2>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th rowspan="2">Rank</th>
-                                <th rowspan="2">No.</th>
-                                <th rowspan="2">Candidate</th>
-                                <?php foreach ($judges as $judge): ?>
-                                <th><?= $judge['name'] ?></th>
-                                <?php endforeach; ?>
-                                <th rowspan="2">Average</th>
-                            </tr>
-                            <tr>
-                                <?php foreach ($judges as $judge): ?>
-                                <th>Score</th>
-                                <?php endforeach; ?>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php 
-                            // Create a copy for sorting by this category
-                            $categorySorted = $overallScores;
-                            usort($categorySorted, function($a, $b) use ($categoryId) {
-                                $scoreA = isset($a['categories'][$categoryId]) ? $a['categories'][$categoryId] : 0;
-                                $scoreB = isset($b['categories'][$categoryId]) ? $b['categories'][$categoryId] : 0;
-                                return $scoreB <=> $scoreA;
-                            });
-                            ?>
-                            
-                            <?php foreach ($categorySorted as $index => $candidate): ?>
-                            <tr>
-                                <td>
-                                    <span class="rank <?= $index < 3 ? 'rank-'.($index+1) : '' ?>">
-                                        <?= $index + 1 ?>
-                                    </span>
-                                </td>
-                                <td><?= $candidate['number'] ?></td>
-                                <td class="candidate-name"><?= $candidate['name'] ?></td>
-                                <?php foreach ($judges as $judge): ?>
-                                <td>
-                                    <?php 
-                                    $judgeName = $judge['name'];
-                                    $score = isset($candidate['judges'][$judgeName]['categories'][$categoryId]) 
-                                        ? number_format($candidate['judges'][$judgeName]['categories'][$categoryId], 2) 
-                                        : '-';
-                                    echo $score;
-                                    ?>
-                                </td>
-                                <?php endforeach; ?>
-                                <td class="top-score">
-                                    <?= isset($candidate['categories'][$categoryId]) 
-                                        ? number_format($candidate['categories'][$categoryId], 2) 
-                                        : '-' ?>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-                
-                <h3>Criteria Breakdown for <?= $categoryName ?></h3>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Criteria</th>
-                                <th>Weight</th>
-                                <th>Description</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($criteriaMapping[$categoryId] as $criteria): ?>
-                            <tr>
-                                <td><?= $criteria['id'] ?></td>
-                                <td><?= $criteria['weight'] ?>%</td>
-                                <td style="text-align: left"><?= $criteria['name'] ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <?php endforeach; ?>
-            
-            <!-- Detailed Breakdown Tab -->
-            <div id="detailed" class="tab-content">
-                <h2>Detailed Score Breakdown</h2>
-                
-                <?php foreach ($candidates as $candidate): ?>
-                <?php $candidateId = $candidate['number']; ?>
-                <div class="card">
-                    <h3>Candidate #<?= $candidateId ?>: <?= $candidate['name'] ?></h3>
+        <h1>HIYAS SCORING RESULTS</h1>
+        
+        <button class="print-btn" onclick="window.print()">Print Results</button>
+        
+        <!-- Grand Total Results (Show First) -->
+        <div class="section-header">GRAND TOTAL RESULTS</div>
+        
+        <table class="grand-total-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Candidate</th>
+                    <th>Pre-Pageant <span class="weight-label">(30%)</span></th>
+                    <th>Pageant Night <span class="weight-label">(70%)</span></th>
+                    <th>Grand Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php 
+                $rank = 1;
+                foreach ($grandTotalScores as $candidateId => $score): 
+                    // Find candidate data
+                    $candidate = null;
+                    foreach ($candidates as $c) {
+                        if ($c['id'] == $candidateId) {
+                            $candidate = $c;
+                            break;
+                        }
+                    }
+                    if (!$candidate) continue;
                     
-                    <?php foreach ($categoryNames as $categoryId => $categoryName): ?>
-                    <h4><?= $categoryName ?></h4>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Judge</th>
-                                    <?php foreach ($criteriaMapping[$categoryId] as $criteria): ?>
-                                    <th colspan="2"><?= $criteria['name'] ?> (<?= $criteria['weight'] ?>%)</th>
-                                    <?php endforeach; ?>
-                                    <th>Total</th>
-                                </tr>
-                                <tr>
-                                    <th></th>
-                                    <?php foreach ($criteriaMapping[$categoryId] as $criteria): ?>
-                                    <th>Raw</th>
-                                    <th>Weighted</th>
-                                    <?php endforeach; ?>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($judges as $judge): ?>
-                                <?php 
-                                $judgeName = $judge['name'];
-                                $detailedScores = isset($judgesScores[$judgeName]) 
-                                    ? getDetailedScores($candidateId, $categoryId, $judgeName, $judgesScores, $criteriaMapping) 
-                                    : [];
-                                $totalScore = isset($overallScores[$candidateId]['judges'][$judgeName]['categories'][$categoryId])
-                                    ? $overallScores[$candidateId]['judges'][$judgeName]['categories'][$categoryId]
-                                    : 0;
-                                ?>
-                                <tr>
-                                    <td><?= $judgeName ?></td>
-                                    <?php foreach ($criteriaMapping[$categoryId] as $criteria): ?>
-                                    <?php 
-                                    $criteriaId = $criteria['id'];
-                                    $rawScore = isset($detailedScores[$criteriaId]) ? $detailedScores[$criteriaId]['raw'] : '-';
-                                    $weightedScore = isset($detailedScores[$criteriaId]) ? number_format($detailedScores[$criteriaId]['weighted'], 2) : '-';
-                                    ?>
-                                    <td><?= $rawScore ?></td>
-                                    <td><?= $weightedScore ?></td>
-                                    <?php endforeach; ?>
-                                    <td><?= number_format($totalScore, 2) ?></td>
-                                </tr>
-                                <?php endforeach; ?>
-                                <tr>
-                                    <td><strong>Average</strong></td>
-                                    <?php 
-                                    $colCount = count($criteriaMapping[$categoryId]) * 2 + 1;
-                                    $avgScore = isset($overallScores[$candidateId]['categories'][$categoryId])
-                                        ? number_format($overallScores[$candidateId]['categories'][$categoryId], 2)
-                                        : '-';
-                                    ?>
-                                    <td colspan="<?= $colCount ?>"><strong><?= $avgScore ?></strong></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
+                    // Determine if this is the winner (rank 1)
+                    $isWinner = $rank === 1;
+                ?>
+                    <tr class="<?= $isWinner ? 'winner-row' : '' ?>">
+                        <td><?= getOrdinal($rank++) ?></td>
+                        <td class="candidate-name"><?= $candidate['number'] ?>. <?= $candidate['name'] ?></td>
+                        <td><?= number_format((float)$candidate['prepageant'], 2) ?></td>
+                        <td><?= number_format($overallScores[$candidateId] * 0.7, 2) ?></td>
+                        <td class="total-score"><?= number_format($score, 2) ?></td>
+                    </tr>
                 <?php endforeach; ?>
-            </div>
+            </tbody>
+        </table>
+        
+        <!-- Overall Pageant Night Results -->
+        <div class="section-header">PAGEANT NIGHT RESULTS <span class="weight-label">(70% of Grand Total)</span></div>
+        
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Candidate</th>
+                    <?php foreach ($categoryWeights as $category => $weight): ?>
+                        <th><?= $categoryNames[$category] ?> <br><span class="weight-label">(<?= $weight ?>%)</span></th>
+                    <?php endforeach; ?>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php 
+                // Sort candidates by overall score for ranking
+                $sortedOverallScores = $overallScores;
+                arsort($sortedOverallScores);
+                $rank = 1;
+                
+                foreach ($sortedOverallScores as $candidateId => $score): 
+                    // Find candidate data
+                    $candidate = null;
+                    foreach ($candidates as $c) {
+                        if ($c['id'] == $candidateId) {
+                            $candidate = $c;
+                            break;
+                        }
+                    }
+                    if (!$candidate) continue;
+                ?>
+                    <tr>
+                        <td><?= getOrdinal($rank++) ?></td>
+                        <td class="candidate-name"><?= $candidate['number'] ?>. <?= $candidate['name'] ?></td>
+                        
+                        <?php foreach ($categoryWeights as $category => $weight): ?>
+                            <td><?= number_format($categoryAverages[$candidateId][$category], 2) ?></td>
+                        <?php endforeach; ?>
+                        
+                        <td class="total-score"><?= number_format($score, 2) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        
+        <!-- Category-by-Category Detailed Results -->
+        <div class="page-break"></div>
+        <div class="section-header">DETAILED CATEGORY RESULTS</div>
+        
+        <?php foreach ($categoryWeights as $category => $weight): ?>
+            <h2><?= $categoryNames[$category] ?> <span class="weight-label">(<?= $weight ?>%)</span></h2>
             
-            <div class="card mt-4">
-                <p class="mb-0 text-center">© <?= date('Y') ?> Pageant Scoring System</p>
-            </div>
-        </div>
+            <table class="detail-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2">Candidate</th>
+                        <?php foreach ($judges as $judge): ?>
+                            <th colspan="<?= count($criteriaMapping[$category]) + 1 ?>"><?= $judge['name'] ?></th>
+                        <?php endforeach; ?>
+                        <th rowspan="2">Average</th>
+                    </tr>
+                    <tr>
+                        <?php foreach ($judges as $judge): ?>
+                            <?php foreach ($criteriaMapping[$category] as $criterion): ?>
+                                <th title="<?= $criterion['name'] ?> (<?= $criterion['weight'] ?>%)">
+                                    <?= ucfirst(substr($criterion['id'], 0, 10)) ?>
+                                </th>
+                            <?php endforeach; ?>
+                            <th>Total</th>
+                        <?php endforeach; ?>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($candidates as $candidate): ?>
+                        <tr>
+                            <td class="candidate-name"><?= $candidate['number'] ?>. <?= $candidate['name'] ?></td>
+
+                            <?php 
+                            $candidateId = $candidate['id'];
+                            $overallTotal = 0;
+                            ?>
+
+                            <?php foreach ($judges as $judge): ?>
+                                <?php 
+                                $judgeId = $judge['id'];
+                                $scoreData = isset($judgesScores[$judgeId][$category][$candidateId]) ? 
+                                    $judgesScores[$judgeId][$category][$candidateId] : [];
+                                $judgeTotal = 0;
+                                ?>
+
+                                <?php foreach ($criteriaMapping[$category] as $criterion): ?>
+                                    <?php 
+                                    $score = isset($scoreData[$criterion['id']]) ? $scoreData[$criterion['id']] : 0;
+                                    $judgeTotal += $score;
+                                    ?>
+                                    <td><?= $score ?></td>
+                                <?php endforeach; ?>
+
+                                <td class="total-score"><?= $judgeTotal ?></td>
+                                <?php $overallTotal += $judgeTotal; ?>
+                            <?php endforeach; ?>
+
+                            <td class="total-score">
+                                <?= number_format($categoryAverages[$candidateId][$category], 2) ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endforeach; ?>
     </div>
-    
-    <script>
-        // Tab functionality
-        function showTab(tabId) {
-            // Hide all tab contents
-            const tabContents = document.querySelectorAll('.tab-content');
-            tabContents.forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Deactivate all tabs
-            const tabs = document.querySelectorAll('.tab');
-            tabs.forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Show the selected tab content
-            document.getElementById(tabId).classList.add('active');
-            
-            // Activate the tab button
-            const activeTab = Array.from(tabs).find(tab => {
-                return tab.getAttribute('onclick').includes(`'${tabId}'`);
-            });
-            
-            if (activeTab) {
-                activeTab.classList.add('active');
-            }
-        }
-    </script>
 </body>
 </html>
