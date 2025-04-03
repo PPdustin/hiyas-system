@@ -272,7 +272,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </form>
         
         <div class="form-footer">
-            If you don't have an access code, please contact your administrator
+            <!-- If you don't have an access code, please contact your administrator -->
+             <?= "Address: " . gethostbyname(gethostname()); ?>
         </div>
     </div>
 </body>

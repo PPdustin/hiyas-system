@@ -207,7 +207,7 @@ function getOrdinal($number) {
         
         .container {
             width: 100%;
-            max-width: 1200px;
+            max-width: 1500px;
             margin: 0 auto;
             padding: 20px;
             box-sizing: border-box;
@@ -509,7 +509,7 @@ function getOrdinal($number) {
                         <?php foreach ($judges as $judge): ?>
                             <?php foreach ($criteriaMapping[$category] as $criterion): ?>
                                 <th title="<?= $criterion['name'] ?> (<?= $criterion['weight'] ?>%)">
-                                    <?= ucfirst(substr($criterion['id'], 0, 10)) ?>
+                                    <?= ucfirst(substr($criterion['id'], 0, 5)) ?>
                                 </th>
                             <?php endforeach; ?>
                             <th>Total</th>

@@ -1,4 +1,6 @@
 <?php
+    include "functions.php";
+
     $code = $_GET['code'] ?? "";
     if ($code != 'jpg2025') {
         ?>
@@ -359,6 +361,7 @@
                             <tr>
                                 <th>Name</th>
                                 <th>Access Code</th>
+                                <th>Progress</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -451,8 +454,16 @@
         ?>
 
         <?php
-            $judgesJson = file_get_contents('./src/judges.json'); // Read JSON file
-            $judges = json_decode($judgesJson, true); // Convert JSON to PHP array
+            $judgesJson = file_get_contents('./src/judges.json');
+            $judges = json_decode($judgesJson, true);
+            
+            // Calculate progress for each judge
+            foreach ($judges as &$judge) {
+                // Add progress directly to each judge object
+                $judge['progress'] = calculateJudgeProgress($judge['name'], $candidates);
+            }
+            
+            // Output the enhanced judges array as JavaScript
             echo "let judges = " . json_encode($judges, JSON_PRETTY_PRINT) . ";";
         ?>
         
@@ -669,10 +680,25 @@
             tableBody.innerHTML = '';
             
             judges.forEach(judge => {
+                let progressColor;
+                if (judge.progress >= 100) {
+                    progressColor = '#006d32'; // Deep forest green (AAA contrast)
+                } else {
+                    if (judge.progress >= 75) {
+                        progressColor = '#ffab00'; // Rich terracotta (AA+ contrast)
+                    } else if (judge.progress >= 50) {
+                        progressColor = '#ffab00'; // Dark safety orange
+                    } else {
+                        progressColor = '#ffab00'; // Deep golden yellow
+                    }
+                }
+
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${judge.name}</td>
                     <td>${judge.code}</td>
+                    <td><span style="color: ${progressColor}; font-weight: bold;">${judge.progress}%</span></td>
                     <td class="action-btns">
                         <button class="btn btn-primary edit-judge" data-id="${judge.id}">Edit</button>
                         <button class="btn btn-danger delete-judge" data-id="${judge.id}">Delete</button>
@@ -787,7 +813,7 @@
         }
 
         function viewResults(){
-            window.location.href = `results.php?code=<?php echo urlencode($code);?>`;
+            window.location.href = `xresults.php?code=<?php echo urlencode($code);?>`;
         }
 
         
