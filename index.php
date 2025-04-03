@@ -142,7 +142,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             color: var(--primary-text);
         }
         
-        input[type="text"] {
+        input[type="password"] {
             width: 100%;
             padding: 12px 16px;
             font-family: 'Inter', sans-serif;
@@ -154,7 +154,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             transition: border-color 0.2s;
         }
         
-        input[type="text"]:focus {
+        input[type="password"]:focus {
             outline: none;
             border-color: var(--accent-color);
         }
@@ -251,7 +251,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <form id="loginForm" method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
             <div class="form-group">
                 <label for="accessCode">Access Code</label>
-                <input type="text" id="accessCode" name="accessCode" placeholder="Enter your access code" required>
+                <input type="password" id="accessCode" name="accessCode" placeholder="Enter your access code" required>
             </div>
             
             <div class="form-group">

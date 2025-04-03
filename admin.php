@@ -681,6 +681,7 @@
             
             judges.forEach(judge => {
                 let progressColor;
+                judge.progress = judge.progress ? judge.progress : 0;
                 if (judge.progress >= 100) {
                     progressColor = '#006d32'; // Deep forest green (AAA contrast)
                 } else {

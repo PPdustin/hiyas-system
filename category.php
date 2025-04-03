@@ -209,13 +209,14 @@
             padding: 15px;
             background: #fafafa;
             border-radius: 4px;
-            margin-bottom: 15px;
+            margin-bottom: 30px;
             border: 1px solid #e9ecef;
         }
 
         .active-candidate {
             display: block;
         }
+        
     </style>
 </head>
 <body>
