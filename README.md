@@ -3,15 +3,6 @@
 
 Welcome! This guide will walk you through setting up the **Hiyas System** on your local machine using XAMPP. Follow each step carefully and you'll have it running in no time.
 
----
-
-## ✅ Prerequisites
-
-Before you begin, make sure you have the following:
-
-- A Windows PC
-- Basic knowledge of navigating folders and using a browser
-- [XAMPP](https://www.apachefriends.org/download.html) installed
 
 ---
 
@@ -74,7 +65,7 @@ Download this GitHub repository as a ZIP file.
 1. Open the **XAMPP Control Panel**
 2. Click **Start** next to **Apache**
 
-You should see the Apache module turn green. If not, check if another service is using port 80.
+You should see the Apache module turn green.
 
 ---
 
