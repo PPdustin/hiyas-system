@@ -408,7 +408,7 @@ function getOrdinal($number) {
         <table class="grand-total-table">
             <thead>
                 <tr>
-                    <th>Rank</th>
+                    <!-- <th>Rank</th> -->
                     <th>Candidate</th>
                     <th>Pre-Pageant <span class="weight-label">(30%)</span></th>
                     <th>Pageant Night <span class="weight-label">(70%)</span></th>
@@ -433,7 +433,7 @@ function getOrdinal($number) {
                     $isWinner = $rank === 1;
                 ?>
                     <tr class="<?= $isWinner ? 'winner-row' : '' ?>">
-                        <td><?= getOrdinal($rank++) ?></td>
+                        <!-- <td><?= getOrdinal($rank++) ?></td> -->
                         <td class="candidate-name"><?= $candidate['number'] ?>. <?= $candidate['name'] ?></td>
                         <td><?= number_format((float)$candidate['prepageant'], 2) ?></td>
                         <td><?= number_format($overallScores[$candidateId] * 0.7, 2) ?></td>
@@ -449,7 +449,7 @@ function getOrdinal($number) {
         <table class="summary-table">
             <thead>
                 <tr>
-                    <th>Rank</th>
+                    <!-- <th>Rank</th> -->
                     <th>Candidate</th>
                     <?php foreach ($categoryWeights as $category => $weight): ?>
                         <th><?= $categoryNames[$category] ?> <br><span class="weight-label">(<?= $weight ?>%)</span></th>
@@ -476,7 +476,7 @@ function getOrdinal($number) {
                     if (!$candidate) continue;
                 ?>
                     <tr>
-                        <td><?= getOrdinal($rank++) ?></td>
+                        <!-- <td><?= getOrdinal($rank++) ?></td> -->
                         <td class="candidate-name"><?= $candidate['number'] ?>. <?= $candidate['name'] ?></td>
                         
                         <?php foreach ($categoryWeights as $category => $weight): ?>
