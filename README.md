@@ -1,7 +1,7 @@
 
 # 🚀 Hiyas System - Local Setup Guide
 
-Welcome! This guide will walk you through setting up the **Hiyas System** on your local machine using XAMPP. Follow each step carefully and you'll have it running in no time.
+Welcome! This guide will walk you through setting up the **Hiyas System** on your local machine using XAMPP. Follow each step carefully.
 
 
 ---
